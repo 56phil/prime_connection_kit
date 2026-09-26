@@ -218,7 +218,7 @@ case "$SIGNING_NOTE" in
     echo "Whoever downloads it has one of two ways past that, both verified on this"
     echo "machine. The first is one command:"
     echo
-    echo "  xattr -d com.apple.quarantine \"/Applications/$APP_NAME.app\""
+    echo "  xattr -dr com.apple.quarantine \"/Applications/$APP_NAME.app\""
     echo
     echo "The second is to launch it once, be refused, then allow it in"
     echo "System Settings → Privacy & Security → \"Open Anyway\"."

@@ -7,8 +7,12 @@ therefore quarantines anything downloaded from the internet and kills it on laun
 To run it, clear the quarantine attribute after dragging the app to Applications:
 
 ```sh
-xattr -d com.apple.quarantine "/Applications/PrimeConnectionKit.app"
+xattr -dr com.apple.quarantine "/Applications/PrimeConnectionKit.app"
 ```
+
+The `-r` matters: dragging the app out of the image leaves quarantine on the bundle
+*and* on the entries inside it, and only the bundle's own attribute is checked at
+launch. Clearing recursively leaves nothing to chance.
 
 Alternatively, launch it once, let it be refused, then allow it under
 **System Settings → Privacy & Security → Open Anyway**.

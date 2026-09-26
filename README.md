@@ -87,12 +87,22 @@ this machine, not assumed.
 To open it, clear the quarantine attribute after dragging the app to Applications:
 
 ```sh
-xattr -d "com.apple.quarantine" "/Applications/PrimeConnectionKit.app"
+xattr -dr "com.apple.quarantine" "/Applications/PrimeConnectionKit.app"
 ```
+
+The `-r` matters: dragging the app out of the image leaves quarantine on the bundle
+*and* on the entries inside it, and only the bundle's own attribute is checked at
+launch. Clearing recursively leaves nothing to chance.
 
 Or launch it once, let it be refused, then allow it under **System Settings →
 Privacy & Security → Open Anyway**. Right-clicking the app and choosing *Open* does
 not bypass this on current macOS versions.
+
+If you check afterwards with `spctl -a -t exec`, it still reports `rejected`. That is
+expected and does not mean anything is wrong: `spctl` applies a static policy, and an
+app with no Developer ID fails it whether or not it runs. The runtime check is what
+the launch tests. (`spctl --add`, which older guides suggest for exactly this, no
+longer exists on current macOS — it answers "This operation is no longer supported".)
 
 With a Developer ID certificate installed, `Scripts/notarize.sh` notarizes and
 staples the image, after which it opens with no warning at all.
