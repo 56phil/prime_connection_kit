@@ -106,7 +106,8 @@ security find-identity -v -p codesigning          # expect a "Developer ID Appli
 ./Scripts/make-dmg.sh                             # signs the app and the image
 xcrun notarytool store-credentials "pck-notary" \
   --apple-id <you> --team-id <TEAMID> --password <app-specific-password>
-./Scripts/notarize.sh build/PrimeConnectionKit-1.0.0.dmg pck-notary
+source Scripts/version.sh
+./Scripts/notarize.sh "build/PrimeConnectionKit-$VERSION.dmg" pck-notary
 ```
 
 The certificate and the image are separate: `make-dmg.sh` signs, `notarize.sh`

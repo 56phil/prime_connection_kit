@@ -1,6 +1,6 @@
 name: Build and release
 
-# Every push and pull request is built and tested. Pushing a tag like `v1.0.0`
+# Every push and pull request is built and tested. Pushing a tag like `v1.0.1`
 # additionally builds the disk image and publishes it as a release, which is what
 # makes the app downloadable without anyone having to compile it.
 on:

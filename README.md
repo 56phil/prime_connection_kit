@@ -67,7 +67,7 @@ release workflow builds a disk image on every tag, so the latest release always
 matches the latest tagged source. Be aware of what macOS will do with it:
 
 ```
-./Scripts/make-dmg.sh       # produces build/PrimeConnectionKit-1.0.0.dmg
+./Scripts/make-dmg.sh       # produces build/PrimeConnectionKit-<version>.dmg
 ```
 
 ### Opening a downloaded copy
@@ -106,7 +106,8 @@ matches `Scripts/version.sh`:
 
 ```
 ./Scripts/make-dmg.sh                    # check it builds
-git tag v1.0.0 && git push origin v1.0.0
+source Scripts/version.sh                # the tag must match this version
+git tag "v$VERSION" && git push origin "v$VERSION"
 ```
 
 To have CI sign the build, add two repository secrets: `MACOS_CERTIFICATE_BASE64`
