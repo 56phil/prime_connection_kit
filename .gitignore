@@ -1,0 +1,14 @@
+# Build products
+.build/
+build/
+*.o
+*.swiftmodule
+
+# Xcode
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+
+# macOS
+.DS_Store
