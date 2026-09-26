@@ -69,6 +69,29 @@ hdiutil create \
   -quiet \
   "$DMG"
 
+# Sign the image itself, not only the app inside it. Gatekeeper assesses a disk
+# image as a whole when it is opened, and notarization cannot be stapled to an
+# unsigned one — `spctl -t open` reports "no usable signature" for it. Only a
+# Developer ID is worth doing this with; ad-hoc signing an image achieves nothing.
+DMG_IDENTITY="${SIGN_IDENTITY:-}"
+if [[ -z "$DMG_IDENTITY" ]]; then
+  DMG_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+    | sed -n 's/.*"\(Developer ID Application:.*\)"/\1/p' | head -1)"
+fi
+if [[ -n "$DMG_IDENTITY" ]]; then
+  echo "Signing the disk image…"
+  echo "  identity: $DMG_IDENTITY"
+  # A timestamp is required: without one the signature stops validating when the
+  # certificate expires, which would invalidate the notarization with it.
+  # An explicit identifier, rather than the filename-derived one, so the
+  # signature is stable if the image is ever renamed.
+  codesign --force --sign "$DMG_IDENTITY" --timestamp \
+    --identifier com.primeconnectionkit.dmg "$DMG"
+  codesign --verify --strict "$DMG"
+else
+  echo "Not signing the disk image: no Developer ID is installed."
+fi
+
 # Verify the image by mounting it and looking at what is actually inside, rather
 # than trusting the file that was written.
 echo "Verifying…"

@@ -42,6 +42,9 @@ jobs:
     env:
       CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
       CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+      NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+      NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -83,6 +86,35 @@ jobs:
           fi
           ./Scripts/make-dmg.sh build
 
+      - name: Notarize the disk image
+        # Only runs when the notarization credentials are configured. Without them
+        # the image is still published, signed but not notarized, and the release
+        # notes tell the reader what macOS will do about that.
+        if: env.NOTARY_APPLE_ID != '' && env.NOTARY_PASSWORD != ''
+        run: |
+          source Scripts/version.sh
+          DMG="build/PrimeConnectionKit-$VERSION.dmg"
+
+          # Credentials are passed as flags rather than stored in a keychain
+          # profile, since the runner is discarded after the job.
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$NOTARY_APPLE_ID" \
+            --team-id "$NOTARY_TEAM_ID" \
+            --password "$NOTARY_PASSWORD" \
+            --wait
+
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+
+          # The assessment should now pass. It does not for an unstapled image, so
+          # this is the check that the ticket actually took.
+          spctl -a -t open --context context:primary-signature -v "$DMG"
+
+          # Stapling modifies the file, so the checksum computed when it was built
+          # no longer matches what will be uploaded. It is regenerated here.
+          ( cd build && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256" )
+          echo "checksum regenerated after notarization"
+
       - name: Upload the disk image as a workflow artifact
         # Available even when the release step is skipped, or when it needs re-running.
         uses: actions/upload-artifact@v4
@@ -103,6 +135,26 @@ jobs:
           # request, with the version substituted in.
           sed "s/@@VERSION@@/$VERSION/g" .github/release-notes.md > /tmp/notes.md
           grep -q "@@" /tmp/notes.md && { echo "::error::unsubstituted placeholder in the release notes"; exit 1; }
+
+          # The Gatekeeper note depends on whether this build was actually
+          # notarized. Both variants are tracked files so they can be reviewed in a
+          # pull request, rather than being written inline where nobody reads them.
+          if [[ -n "$NOTARY_APPLE_ID" && -n "$NOTARY_PASSWORD" ]]; then
+            GATEKEEPER_SECTION=.github/gatekeeper-notarized.md
+          else
+            GATEKEEPER_SECTION=.github/gatekeeper-unnotarized.md
+          fi
+
+          # The section is spliced in with awk rather than sed, because it contains
+          # characters that are special to a sed replacement.
+          awk -v section="$GATEKEEPER_SECTION" '
+            /@@GATEKEEPER_SECTION@@/ { while ((getline line < section) > 0) print line; next }
+            { print }
+          ' /tmp/notes.md > /tmp/notes-final.md
+          mv /tmp/notes-final.md /tmp/notes.md
+
+          grep -q "@@" /tmp/notes.md && { echo "::error::the Gatekeeper section was not substituted"; exit 1; }
+          echo "release notes assembled from $GATEKEEPER_SECTION"
 
           gh release create "$GITHUB_REF_NAME" \
             --title "Prime Connection Kit $VERSION" \

@@ -13,6 +13,8 @@ It deliberately reuses HP's working folder rather than inventing its own, so the
 two applications can be installed side by side and neither is surprised by the
 other's files.
 
+![The main window](Docs/screenshots/main-window.png)
+
 ```
 Sources/HPLink/            transport, wire protocol, content codecs, working folder
 Sources/PrimeConnectionKit/ the AppKit application
@@ -23,7 +25,10 @@ Scripts/make-dmg.sh        packages it as a downloadable disk image
 Scripts/notarize.sh        notarizes a disk image (needs a Developer ID)
 Scripts/make-icon.swift    draws the app icon
 Scripts/version.sh         the version, in one place
+Docs/launch-checklist.md   what is left before announcing this
 ```
+
+Licensed under the MIT licence; see `LICENSE`.
 
 ## Building
 
@@ -43,15 +48,23 @@ uses `ditto`, and the icon is drawn with Core Graphics — all part of the syste
 
 ## Installing
 
-Two ways. To install the copy you built yourself:
+**Build it from source.** This is the recommended way, and not only for the
+obvious reason: an application you compile yourself is **never quarantined** by
+macOS, so it opens without any warning at all. Quarantine is attached when a file
+is downloaded, not when it is built.
 
 ```
+git clone https://github.com/56phil/prime_connection_kit.git
+cd prime_connection_kit
 ./Scripts/install-app.sh    # builds, installs to /Applications, verifies it
 ```
 
-Or, to download a prebuilt copy — see **Releases** on the repository page. The
+That needs Xcode 16 or later, which the audience for this tool tends to have
+anyway.
+
+**Or download a prebuilt copy** from **Releases** on the repository page. The
 release workflow builds a disk image on every tag, so the latest release always
-matches the latest tagged source:
+matches the latest tagged source. Be aware of what macOS will do with it:
 
 ```
 ./Scripts/make-dmg.sh       # produces build/PrimeConnectionKit-1.0.0.dmg
@@ -60,10 +73,10 @@ matches the latest tagged source:
 ### Opening a downloaded copy
 
 The disk image is signed, but **not notarized**, because notarization requires a
-paid Developer ID certificate rather than the development certificate available
-here. macOS quarantines anything downloaded from the internet and refuses it: the
-assessment returns `rejected` and the process is killed on launch. Verified on this
-machine, not assumed.
+paid Developer ID certificate that is not available to this project. macOS
+quarantines anything downloaded from the internet and refuses it: the assessment
+returns `rejected` and the process is killed on launch. Verified on this machine,
+not assumed.
 
 To open it, clear the quarantine attribute after dragging the app to Applications:
 
@@ -75,8 +88,10 @@ Or launch it once, let it be refused, then allow it under **System Settings →
 Privacy & Security → Open Anyway**. Right-clicking the app and choosing *Open* does
 not bypass this on current macOS versions.
 
-With a Developer ID certificate installed, `Scripts/notarize.sh` will notarize and
-staple the image, after which it opens with no warning at all.
+With a Developer ID certificate installed, `Scripts/notarize.sh` notarizes and
+staples the image, after which it opens with no warning at all.
+
+### Either way
 
 The install script refuses to replace a running copy, and checks the signature of
 what it actually installed rather than of what it built. There is no driver to

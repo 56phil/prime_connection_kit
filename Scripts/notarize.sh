@@ -47,6 +47,29 @@ if ! security find-identity -v -p codesigning | grep -q "Developer ID Applicatio
   exit 1
 fi
 
+# The image must already be signed with a Developer ID. Notarytool rejects an
+# unsigned or ad-hoc-signed upload, and its error for that is not obvious, so the
+# state is checked here where it can be explained.
+if ! codesign --verify --strict "$DMG" 2>/dev/null; then
+  echo "error: $DMG is not signed." >&2
+  echo "       Notarization requires the image itself to be signed first." >&2
+  echo "       Run Scripts/make-dmg.sh with a Developer ID installed." >&2
+  exit 1
+fi
+DMG_AUTHORITY="$(codesign -dv -v "$DMG" 2>&1 | sed -n 's/^Authority=//p' | head -1)"
+if [[ "$DMG_AUTHORITY" != Developer\ ID* ]]; then
+  echo "error: $DMG is signed with '$DMG_AUTHORITY', not a Developer ID." >&2
+  echo "       Only a Developer ID signature can be notarized." >&2
+  exit 1
+fi
+if ! codesign -dv -v "$DMG" 2>&1 | grep -q "^Timestamp="; then
+  echo "error: the image's signature has no secure timestamp." >&2
+  echo "       Notarization rejects an untimestamped signature. Rebuild with" >&2
+  echo "       Scripts/make-dmg.sh, which timestamps when it has a Developer ID." >&2
+  exit 1
+fi
+echo "Pre-flight: the image is signed by $DMG_AUTHORITY with a timestamp."
+
 echo "Submitting $DMG for notarization…"
 echo "(this waits for Apple's scan; it usually takes a few minutes)"
 xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait

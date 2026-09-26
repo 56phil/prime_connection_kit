@@ -122,28 +122,65 @@ if grep -q "@@" "$APP/Contents/Info.plist"; then
 fi
 
 echo "Signing…"
-# Prefer a real signing identity over ad-hoc. macOS keys the Input Monitoring
-# grant to the code signature, and an ad-hoc signature changes on every build, so
-# each rebuild would ask for permission again. A team-signed build keeps the grant.
+# Which identity to sign with, in order of preference:
+#
+# 1. A Developer ID. This is what makes a *downloaded* copy open without a warning,
+#    and it is the only kind of certificate that can be notarized. It is therefore
+#    preferred over a development certificate when both are installed, because a
+#    build intended for release should be the most widely usable one.
+# 2. An Apple Development certificate. This keeps the Input Monitoring grant stable
+#    across rebuilds — macOS keys that grant to the code signature, and an ad-hoc
+#    signature changes on every build, so each rebuild asks for permission again.
+# 3. Ad-hoc, which costs the user a Gatekeeper step but needs no certificate.
+#
+# `SIGN_IDENTITY` overrides the search, which is how CI passes one in.
 IDENTITY="${SIGN_IDENTITY:-}"
+IS_DEVELOPER_ID=false
 if [[ -z "$IDENTITY" ]]; then
   IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
-    | sed -n 's/.*"\(Apple Development:.*\)"/\1/p' | head -1)"
+    | sed -n 's/.*"\(Developer ID Application:.*\)"/\1/p' | head -1)"
+  if [[ -n "$IDENTITY" ]]; then
+    IS_DEVELOPER_ID=true
+  else
+    IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+      | sed -n 's/.*"\(Apple Development:.*\)"/\1/p' | head -1)"
+  fi
 fi
+if [[ "$IDENTITY" == Developer\ ID* ]]; then IS_DEVELOPER_ID=true; fi
 
 if [[ -n "$IDENTITY" ]]; then
   echo "  identity: $IDENTITY"
-  codesign --force --sign "$IDENTITY" --options runtime --timestamp=none \
-    --identifier com.primeconnectionkit.app "$APP" || {
+  # A Developer ID signature is timestamped, because notarization rejects an
+  # untimestamped one: without a timestamp the signature stops validating when the
+  # certificate expires, which would invalidate the notarization with it.
+  # Development certificates do not need one, and asking for it makes an offline
+  # build fail for no benefit.
+  TIMESTAMP_ARGS=(--timestamp=none)
+  if [[ "$IS_DEVELOPER_ID" == true ]]; then
+    TIMESTAMP_ARGS=(--timestamp)
+  fi
+  if codesign --force --sign "$IDENTITY" --options runtime "${TIMESTAMP_ARGS[@]}" \
+       --identifier com.primeconnectionkit.app "$APP"; then
+    if [[ "$IS_DEVELOPER_ID" == true ]]; then
+      echo "  signed with a Developer ID; ready for notarization"
+    fi
+  else
     echo "warning: signing with '$IDENTITY' failed; falling back to ad-hoc" >&2
     codesign --force --sign - --identifier com.primeconnectionkit.app "$APP"
-  }
+  fi
 else
   echo "  no signing identity found; using ad-hoc"
   echo "  (an ad-hoc signature changes on every build, so macOS will ask for"
   echo "   Input Monitoring permission again after each rebuild)"
   codesign --force --sign - --identifier com.primeconnectionkit.app "$APP"
 fi
+
+# Confirm the signature took, so a failure cannot be discovered later by whoever
+# downloads it.
+codesign --verify --strict "$APP" || {
+  echo "error: the signature does not verify" >&2
+  exit 1
+}
 
 echo
 echo "Built $APP"
