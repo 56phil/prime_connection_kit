@@ -111,8 +111,15 @@ git tag "v$VERSION" && git push origin "v$VERSION"
 ```
 
 To have CI sign the build, add two repository secrets: `MACOS_CERTIFICATE_BASE64`
-(a base64 `.p12`) and `MACOS_CERTIFICATE_PASSWORD`. Without them the workflow still
-publishes, but signed ad-hoc, and the release notes say so.
+(the **Developer ID Application** certificate exported as a `.p12`, base64-encoded)
+and `MACOS_CERTIFICATE_PASSWORD` (the password given to that export). Without them
+the workflow still publishes, but signed ad-hoc, and the release notes say so.
+
+Notarizing that build too needs three more: `MACOS_NOTARY_APPLE_ID`,
+`MACOS_NOTARY_TEAM_ID`, and `MACOS_NOTARY_PASSWORD`. The password is an
+**app-specific** one from appleid.apple.com, not the account password. With all five
+present the workflow signs with the Developer ID, notarizes, staples, and the release
+notes describe the notarized case instead of the quarantine warning.
 
 **The first launch asks for Input Monitoring permission.** macOS requires it before
 any application may open a USB HID device. Grant it under System Settings →

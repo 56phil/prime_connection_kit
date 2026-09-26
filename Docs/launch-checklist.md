@@ -114,9 +114,21 @@ The certificate and the image are separate: `make-dmg.sh` signs, `notarize.sh`
 uploads and staples. The second command needs an app-specific password from
 appleid.apple.com, not the account password.
 
-For CI, add `MACOS_CERTIFICATE_BASE64` and `MACOS_CERTIFICATE_PASSWORD` as
-repository secrets and the release workflow signs properly instead of ad-hoc. It
-does not notarize yet — that needs the credentials stored on the runner too.
+For CI, five repository secrets. The first two sign the build; all five also
+notarize it:
+
+| Secret | Value |
+|---|---|
+| `MACOS_CERTIFICATE_BASE64` | the Developer ID Application certificate, exported as a `.p12`, base64-encoded (`base64 -i cert.p12`) |
+| `MACOS_CERTIFICATE_PASSWORD` | the password given to that export |
+| `MACOS_NOTARY_APPLE_ID` | the Apple ID used to enroll |
+| `MACOS_NOTARY_TEAM_ID` | the team identifier of the individual membership (10 characters, seen in `security find-identity -v -p codesigning`) |
+| `MACOS_NOTARY_PASSWORD` | an app-specific password from appleid.apple.com — not the account password |
+
+The workflow reads the notarization credentials into the environment and tests those
+variables, because `secrets` are not available to `if` expressions. Note that an
+**ad-hoc signed image can never be notarized**: `notarize.sh` refuses one up front,
+since `notarytool`'s own error for it is not obvious.
 
 ## Screenshots
 
