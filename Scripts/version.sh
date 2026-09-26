@@ -10,5 +10,5 @@
 # `CFBundleVersion` is the build number, which has to increase for every build of
 # the same marketing version; the workflow uses the run number.
 
-export VERSION="${VERSION:-1.0.0}"
+export VERSION="${VERSION:-1.0.1}"
 export BUILD_NUMBER="${BUILD_NUMBER:-1}"

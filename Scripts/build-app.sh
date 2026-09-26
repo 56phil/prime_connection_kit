@@ -16,13 +16,33 @@ APP="$OUTPUT_DIR/PrimeConnectionKit.app"
 
 echo "Building the release binary…"
 cd "$ROOT"
-swift build -c release --product PrimeConnectionKit
 
-BIN="$(swift build -c release --product PrimeConnectionKit --show-bin-path)/PrimeConnectionKit"
+# A universal build, because the app exists to replace one that is Intel-only: the
+# people most likely to want it are the ones whose Macs cannot run HP's. Each
+# architecture is compiled separately and combined, rather than built for the host
+# and hoped for.
+#
+# `swift build --arch` writes to a per-architecture location, so the path is asked
+# for with the same flags rather than guessed.
+ARCH_FLAGS=(--arch arm64 --arch x86_64)
+swift build -c release --product PrimeConnectionKit "${ARCH_FLAGS[@]}"
+
+BIN="$(swift build -c release --product PrimeConnectionKit "${ARCH_FLAGS[@]}" --show-bin-path)/PrimeConnectionKit"
 if [[ ! -x "$BIN" ]]; then
   echo "error: the built binary was not found at $BIN" >&2
   exit 1
 fi
+
+# Report what was actually produced; a silent fall back to one architecture would
+# otherwise only be noticed by someone whose Mac it does not run on.
+ARCHITECTURES="$(lipo -archs "$BIN")"
+echo "  architectures: $ARCHITECTURES"
+for required in arm64 x86_64; do
+  if [[ "$ARCHITECTURES" != *"$required"* ]]; then
+    echo "error: the binary is missing the $required slice" >&2
+    exit 1
+  fi
+done
 
 echo "Assembling $APP…"
 rm -rf "$APP"
