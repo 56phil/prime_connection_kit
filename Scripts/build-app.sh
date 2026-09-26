@@ -46,6 +46,11 @@ mkdir -p "$APP/Contents/Resources"
 
 cp "$BIN" "$APP/Contents/MacOS/PrimeConnectionKit"
 
+# The MIT licence requires its notice to travel with every copy, and a disk image
+# carrying only the .app would ship none. It goes inside the bundle, where it stays
+# attached to the binary rather than being separated from it at packaging time.
+cp "$ROOT/LICENSE" "$APP/Contents/Resources/LICENSE"
+
 # The icon is generated rather than committed: the app deliberately carries no
 # binary assets, and drawing it means every size macOS asks for is rendered
 # natively instead of being downsampled from one large bitmap.
@@ -85,7 +90,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<!-- Documents the reason the app enumerates HID devices. macOS prompts for
 	     Input Monitoring only when a device is actually opened. -->
 	<key>NSHumanReadableCopyright</key>
-	<string>Prime Connection Kit — a native macOS replacement for HP Connectivity Kit.</string>
+	<string>Copyright © 2026 Philip Huffman. MIT licensed; see LICENSE.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
