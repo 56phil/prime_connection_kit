@@ -134,7 +134,14 @@ jobs:
           # The notes live in the repository so they can be reviewed in a pull
           # request, with the version substituted in.
           sed "s/@@VERSION@@/$VERSION/g" .github/release-notes.md > /tmp/notes.md
-          grep -q "@@" /tmp/notes.md && { echo "::error::unsubstituted placeholder in the release notes"; exit 1; }
+
+          # Only the version placeholder is checked here. The Gatekeeper placeholder
+          # is still present at this point by design — it is substituted further
+          # down — so testing for a bare "@@" would fail every run.
+          if grep -q "@@VERSION@@" /tmp/notes.md; then
+            echo "::error::the version placeholder was not substituted"
+            exit 1
+          fi
 
           # The Gatekeeper note depends on whether this build was actually
           # notarized. Both variants are tracked files so they can be reviewed in a
@@ -153,7 +160,12 @@ jobs:
           ' /tmp/notes.md > /tmp/notes-final.md
           mv /tmp/notes-final.md /tmp/notes.md
 
-          grep -q "@@" /tmp/notes.md && { echo "::error::the Gatekeeper section was not substituted"; exit 1; }
+          # Now every placeholder must be gone. This catches a Gatekeeper section
+          # that failed to splice, which would otherwise publish raw markers.
+          if grep -q "@@" /tmp/notes.md; then
+            echo "::error::a placeholder survived into the release notes"
+            exit 1
+          fi
           echo "release notes assembled from $GATEKEEPER_SECTION"
 
           gh release create "$GITHUB_REF_NAME" \
