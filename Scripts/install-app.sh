@@ -52,7 +52,8 @@ SIGNATURE="$(codesign -dv -v "$DEST" 2>&1 | sed -n 's/^Authority=//p' | head -1)
 if [[ -n "$SIGNATURE" ]]; then
   echo "  signed by: $SIGNATURE"
 else
-  echo "  signed ad-hoc (macOS will re-ask for Input Monitoring after each rebuild)"
+  echo "  signed ad-hoc (macOS keys Input Monitoring to this exact binary, so it will"
+  echo "   ask again whenever the code changes)"
 fi
 
 BUNDLE_ID="$(defaults read "$DEST/Contents/Info.plist" CFBundleIdentifier)"

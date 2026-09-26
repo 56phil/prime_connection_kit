@@ -79,6 +79,10 @@ jobs:
           # Becomes CFBundleVersion, which has to increase for every build of the
           # same marketing version.
           BUILD_NUMBER: ${{ github.run_number }}
+          # Packaging refuses to publish an app carrying a team identifier it was
+          # not told to expect, so the team that signs a release has to be stated.
+          # When a Developer ID is configured, that is the notarization team.
+          ALLOWED_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
         run: |
           if [[ -z "$CERTIFICATE_BASE64" ]]; then
             echo "No signing certificate configured; the app will be signed ad-hoc"

@@ -13,6 +13,12 @@
 # Gatekeeper and has to be opened deliberately. The script reports which case
 # applies rather than leaving the user to discover it.
 #
+# An app signed with a development certificate is re-signed ad-hoc before it is
+# packaged, because that certificate carries an issuing team's identifier and a
+# development certificate is not distributable anyway. Packaging is refused outright
+# if a team identifier survives that, unless `ALLOWED_TEAM_ID` says it is expected —
+# a team identifier on a published build cannot be taken back afterwards.
+#
 # Usage: Scripts/make-dmg.sh [output-directory]
 
 set -euo pipefail
@@ -40,10 +46,6 @@ fi
 STAGING="$(mktemp -d)"
 trap 'rm -rf "$STAGING"' EXIT
 
-echo "Staging…"
-ditto "$APP" "$STAGING/$APP_NAME.app"
-ln -s /Applications "$STAGING/Applications"
-
 # Report what the signature will mean to whoever downloads this.
 SIGNATURE="$(codesign -dv -v "$APP" 2>&1 | sed -n 's/^Authority=//p' | head -1)"
 if [[ "$SIGNATURE" == Developer\ ID* ]]; then
@@ -57,6 +59,58 @@ else
   echo "  signed ad-hoc"
   SIGNING_NOTE="adhoc"
 fi
+
+# Never package an app signed with a team that is not ours. A development machine
+# frequently carries a certificate issued to an employer, and publishing a release
+# with it would put their team identifier on this project's downloads, naming them
+# as the team of record for software they have nothing to do with. A development
+# certificate cannot be notarized in any case, so nothing is lost by replacing it
+# with an ad-hoc signature, which carries no team at all.
+if [[ "$SIGNATURE" != Developer\ ID* ]]; then
+  INHERITED_TEAM="$(codesign -dv -v "$APP" 2>&1 | sed -n 's/^TeamIdentifier=//p' | head -1)"
+  if [[ -n "$INHERITED_TEAM" && "$INHERITED_TEAM" != "not set" ]]; then
+    echo "Re-signing ad-hoc…"
+    echo "  the app carries team $INHERITED_TEAM from the certificate that signed it"
+    echo "  a development certificate is not distributable, and that team identifier"
+    echo "  does not belong on a published build"
+    # Mirrors the ad-hoc path in build-app.sh rather than inventing a second one.
+    codesign --force --sign - --identifier com.primeconnectionkit.app "$APP"
+    SIGNATURE=""
+    SIGNING_NOTE="adhoc"
+  fi
+fi
+
+# Assert the property that was just established, rather than trusting the logic
+# above: a team identifier in a download is the one thing here that cannot be
+# undone after the fact.
+FINAL_TEAM="$(codesign -dv -v "$APP" 2>&1 | sed -n 's/^TeamIdentifier=//p' | head -1)"
+if [[ -n "$FINAL_TEAM" && "$FINAL_TEAM" != "not set" ]]; then
+  EXPECTED_TEAM="${ALLOWED_TEAM_ID:-}"
+  if [[ -z "$EXPECTED_TEAM" ]]; then
+    echo "error: this app is signed with team $FINAL_TEAM, and packaging it would" >&2
+    echo "       publish that team identifier as the team of record." >&2
+    echo "       If $FINAL_TEAM is your own team, re-run as:" >&2
+    echo "         ALLOWED_TEAM_ID=$FINAL_TEAM $0 $OUTPUT_DIR" >&2
+    echo "       If it belongs to someone else, sign with your own identity or" >&2
+    echo "       ad-hoc (SIGN_IDENTITY=-)." >&2
+    exit 1
+  fi
+  if [[ "$FINAL_TEAM" != "$EXPECTED_TEAM" ]]; then
+    echo "error: the app is signed with team $FINAL_TEAM, but ALLOWED_TEAM_ID is" >&2
+    echo "       $EXPECTED_TEAM. Refusing to package it." >&2
+    exit 1
+  fi
+  echo "  team identifier: $FINAL_TEAM (matches ALLOWED_TEAM_ID)"
+else
+  echo "  team identifier: none"
+fi
+
+echo "Staging…"
+# Deliberately after the signing decisions above: the image is built from this
+# copy, so a signature applied afterwards would never reach the download. That is
+# how a development certificate's team identifier got into a built image once.
+ditto "$APP" "$STAGING/$APP_NAME.app"
+ln -s /Applications "$STAGING/Applications"
 
 echo "Creating the disk image…"
 rm -f "$DMG"
@@ -117,6 +171,23 @@ codesign --verify --strict "$MOUNT_POINT/$APP_NAME.app" || {
 VERSION_IN_IMAGE="$(defaults read "$MOUNT_POINT/$APP_NAME.app/Contents/Info.plist" CFBundleShortVersionString)"
 echo "  mounted image holds $APP_NAME $VERSION_IN_IMAGE"
 echo "  executable is present and the signature verifies"
+
+# Check the team identifier on what is actually inside the image, not on the build
+# directory. Those are different artifacts, and asserting on the wrong one reports
+# success while shipping a signature that was replaced — which is precisely what the
+# ordering in this script once did.
+SHIPPED_TEAM="$(codesign -dv -v "$MOUNT_POINT/$APP_NAME.app" 2>&1 | sed -n 's/^TeamIdentifier=//p' | head -1)"
+if [[ -n "$SHIPPED_TEAM" && "$SHIPPED_TEAM" != "not set" ]]; then
+  if [[ "$SHIPPED_TEAM" != "${ALLOWED_TEAM_ID:-}" ]]; then
+    echo "error: the app inside the image is signed with team $SHIPPED_TEAM, which" >&2
+    echo "       is not the team this build was permitted to use. Refusing to" >&2
+    echo "       publish it." >&2
+    exit 1
+  fi
+  echo "  team identifier in the image: $SHIPPED_TEAM"
+else
+  echo "  team identifier in the image: none"
+fi
 
 SIZE="$(du -h "$DMG" | cut -f1)"
 echo

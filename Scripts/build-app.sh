@@ -134,9 +134,14 @@ echo "Signing…"
 #    preferred over a development certificate when both are installed, because a
 #    build intended for release should be the most widely usable one.
 # 2. An Apple Development certificate. This keeps the Input Monitoring grant stable
-#    across rebuilds — macOS keys that grant to the code signature, and an ad-hoc
-#    signature changes on every build, so each rebuild asks for permission again.
-# 3. Ad-hoc, which costs the user a Gatekeeper step but needs no certificate.
+#    across rebuilds. macOS keys that grant to the application's designated
+#    requirement, and the two kinds differ in what they pin: a development
+#    certificate pins the bundle identifier and the signing certificate, so the
+#    grant survives recompiling, whereas an ad-hoc signature pins a hash of the
+#    exact binary, so any change to the code produces an application macOS no
+#    longer recognises and the permission has to be granted again.
+# 3. Ad-hoc, which costs the user a Gatekeeper step and that repeated permission
+#    grant, but needs no certificate.
 #
 # `SIGN_IDENTITY` overrides the search, which is how CI passes one in.
 IDENTITY="${SIGN_IDENTITY:-}"
@@ -175,8 +180,9 @@ if [[ -n "$IDENTITY" ]]; then
   fi
 else
   echo "  no signing identity found; using ad-hoc"
-  echo "  (an ad-hoc signature changes on every build, so macOS will ask for"
-  echo "   Input Monitoring permission again after each rebuild)"
+  echo "  (an ad-hoc signature pins a hash of this exact binary, so whenever the code"
+  echo "   changes macOS treats it as a different application and asks for Input"
+  echo "   Monitoring permission again)"
   codesign --force --sign - --identifier com.primeconnectionkit.app "$APP"
 fi
 

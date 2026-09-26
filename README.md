@@ -72,11 +72,17 @@ matches the latest tagged source. Be aware of what macOS will do with it:
 
 ### Opening a downloaded copy
 
-The disk image is signed, but **not notarized**, because notarization requires a
-paid Developer ID certificate that is not available to this project. macOS
-quarantines anything downloaded from the internet and refuses it: the assessment
-returns `rejected` and the process is killed on launch. Verified on this machine,
-not assumed.
+The app is signed **ad-hoc** — a valid signature for local execution, but with no
+identity behind it and nothing for macOS to verify against, because notarization
+requires a paid Developer ID certificate that is not available to this project.
+(Ad-hoc is a deliberate choice rather than a limitation here: a development
+certificate *is* installed, but it belongs to a team that has nothing to do with
+this project, and its team identifier has no business appearing on a public
+download.)
+
+macOS therefore quarantines anything downloaded from the internet and refuses it:
+the assessment returns `rejected` and the process is killed on launch. Verified on
+this machine, not assumed.
 
 To open it, clear the quarantine attribute after dragging the app to Applications:
 
