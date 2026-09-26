@@ -68,14 +68,20 @@ final class MonitorViewController: NSViewController {
         collectionView.isSelectable = true
         collectionView.allowsMultipleSelection = true
         collectionView.backgroundColors = [.clear]
-        collectionView.register(ThumbnailItem.self, forItemWithIdentifier: ThumbnailItem.identifier)
 
         let layout = NSCollectionViewFlowLayout()
         layout.itemSize = NSSize(width: imageSize.pixelWidth + 24, height: imageSize.pixelWidth * 0.75 + 44)
         layout.sectionInset = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         layout.minimumInteritemSpacing = 12
         layout.minimumLineSpacing = 12
+        // The layout must be assigned *before* the item class is registered.
+        // Assigning a layout clears any registered item classes, after which
+        // `makeItem(withIdentifier:for:)` falls back to loading a nib named after
+        // the identifier, finds none, and throws
+        // NSInternalInconsistencyException from inside AppKit's layout pass —
+        // which aborts the process rather than raising a catchable error.
         collectionView.collectionViewLayout = layout
+        collectionView.register(ThumbnailItem.self, forItemWithIdentifier: ThumbnailItem.identifier)
 
         scrollView.documentView = collectionView
         scrollView.hasVerticalScroller = true

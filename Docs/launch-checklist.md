@@ -7,13 +7,26 @@ not a code problem.
 
 - [ ] **Decide the Apple ID route** (below). Everything else here is done or can be
       done without it.
-- [ ] **Capture the screenshots.** `Scripts/capture-screenshot.sh` is ready and
-      verified, but Screen Recording permission is required first, which could not
-      be granted on your behalf. See below.
 
 ## Done
 
 - [x] MIT licence, in `LICENSE`, referenced from the README.
+- [x] **Screenshots captured**, with the app running against the real calculator:
+      `Docs/screenshots/main-window.png` (three-pane window with the content tree),
+      `program-editor.png` (the `first_primes` program open for editing), and
+      `monitor.png` (the Monitor window, "1 calculator connected"). Screen
+      Recording permission had to be granted to the terminal first; a script
+      cannot grant itself that permission.
+- [x] **Monitor window crash fixed.** Opening it with a calculator attached killed
+      the process with `NSInternalInconsistencyException` from inside AppKit's
+      layout pass. Root cause: `loadView()` called
+      `register(_:forItemWithIdentifier:)` *before* assigning
+      `collectionViewLayout`; assigning a layout clears the registered item
+      classes, so `makeItem(withIdentifier:for:)` fell back to loading a nib named
+      `Thumbnail`, found none, and threw. Reproduced outside the app in a minimal
+      `NSCollectionView` harness, where the same ordering threw and the reversed
+      ordering did not. Fixed in `MonitorViewController.loadView()` by assigning
+      the layout before registering.
 - [x] Release build prefers a Developer ID, uses the hardened runtime, and
       timestamps the signature — that combination is what notarization requires,
       and each part was verified against a real signature, not assumed.
@@ -106,12 +119,8 @@ does not notarize yet — that needs the credentials stored on the runner too.
 
 ## Screenshots
 
-The capture script is written, syntax-checked, and its window lookup is verified
-against the running app. It cannot complete here because Screen Recording is
-denied to this terminal, which is a permission no script can grant itself.
-
-Grant **System Settings → Privacy & Security → Screen Recording** to your terminal,
-reopen it, then with the app running:
+Captured. `Scripts/capture-screenshot.sh` writes `Docs/screenshots/<name>.png`,
+capturing the window by its own identifier so anything overlapping it is excluded:
 
 ```
 ./Scripts/capture-screenshot.sh main-window          # the three-pane window
@@ -119,17 +128,19 @@ reopen it, then with the app running:
 ./Scripts/capture-screenshot.sh monitor              # the classroom monitor
 ```
 
-Each writes `Docs/screenshots/<name>.png`. The window is captured by its own
-identifier, so it does not matter what else is on screen.
+Capturing the screen requires Screen Recording permission, which macOS grants to
+the *calling* application — the terminal, not the script. Grant it under System
+Settings → Privacy & Security → Screen Recording, then reopen the terminal.
 
-Worth picturing, in order of how much they would help:
+What the three show:
 
 - the main window with a calculator's content tree visible,
 - a program open in the editor, since that is the thing people come to do,
 - the Monitor window, because it is the classroom feature HP charges attention for.
 
-Then reference them from the README. A calculator application asks people to take a
-lot on trust when it shows them nothing.
+`README.md` references `main-window.png`. A calculator application asks people to
+take a lot on trust when it shows them nothing, so the other two are worth adding
+where they fit the prose.
 
 ## Announcing
 

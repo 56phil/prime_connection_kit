@@ -236,6 +236,8 @@ Security → Input Monitoring.
 
 ### Content editing
 
+![A program open in the editor](Docs/screenshots/program-editor.png)
+
 Each content type has an editor in the work area, opened by double-clicking an
 object or using File → Open:
 
@@ -281,6 +283,8 @@ computer. An object whose calculator has since been disconnected is kept locally
 and the app says so.
 
 ### Classroom tools
+
+![The Monitor window](Docs/screenshots/monitor.png)
 
 The Monitor window shows a thumbnail per connected calculator and refreshes them
 on a timer. A thumbnail's context menu saves or copies the capture, projects the
