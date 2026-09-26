@@ -17,14 +17,10 @@ APP="$OUTPUT_DIR/PrimeConnectionKit.app"
 echo "Building the release binary…"
 cd "$ROOT"
 
-# A universal build, because the app exists to replace one that is Intel-only: the
-# people most likely to want it are the ones whose Macs cannot run HP's. Each
-# architecture is compiled separately and combined, rather than built for the host
-# and hoped for.
-#
-# `swift build --arch` writes to a per-architecture location, so the path is asked
-# for with the same flags rather than guessed.
-ARCH_FLAGS=(--arch arm64 --arch x86_64)
+# Apple silicon only. Stated explicitly rather than left to the host, so the
+# artifact is the same whichever machine runs the build, and asserted below, so a
+# wrong-architecture binary cannot be published as if it matched this intent.
+ARCH_FLAGS=(--arch arm64)
 swift build -c release --product PrimeConnectionKit "${ARCH_FLAGS[@]}"
 
 BIN="$(swift build -c release --product PrimeConnectionKit "${ARCH_FLAGS[@]}" --show-bin-path)/PrimeConnectionKit"
@@ -33,16 +29,15 @@ if [[ ! -x "$BIN" ]]; then
   exit 1
 fi
 
-# Report what was actually produced; a silent fall back to one architecture would
-# otherwise only be noticed by someone whose Mac it does not run on.
+# Report what was actually produced, and refuse anything but arm64: a silent
+# fall back to another architecture would otherwise only be noticed by whoever
+# tried to run it.
 ARCHITECTURES="$(lipo -archs "$BIN")"
 echo "  architectures: $ARCHITECTURES"
-for required in arm64 x86_64; do
-  if [[ "$ARCHITECTURES" != *"$required"* ]]; then
-    echo "error: the binary is missing the $required slice" >&2
-    exit 1
-  fi
-done
+if [[ "$ARCHITECTURES" != "arm64" ]]; then
+  echo "error: expected an arm64 binary, got '$ARCHITECTURES'" >&2
+  exit 1
+fi
 
 echo "Assembling $APP…"
 rm -rf "$APP"

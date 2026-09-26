@@ -34,10 +34,9 @@ swift test                  # 99 tests
 open build/PrimeConnectionKit.app
 ```
 
-Requires macOS 14 or later and Xcode 16 or later. The released app is a universal
-binary, so it runs on Apple silicon and Intel alike — which matters here, because
-the application it replaces is Intel-only, so Intel owners are exactly who cannot
-run HP's.
+Requires macOS 14 or later, on Apple silicon, and Xcode 16 or later to build. The
+released app is an arm64 build; building from source on an Intel Mac will produce
+a working Intel binary, but none is published.
 
 There are no third-party dependencies: the USB layer is built directly on IOKit's HID API, the backup format
 uses `ditto`, and the icon is drawn with Core Graphics — all part of the system.
