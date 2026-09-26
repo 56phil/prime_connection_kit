@@ -29,6 +29,16 @@ if [[ -z "$NAME" ]]; then
   exit 2
 fi
 
+# The argument is a name, not a path, and the output location is fixed. A path
+# would otherwise be joined onto the output directory and produce something like
+# Docs/screenshots//tmp/shot.png, which fails as an empty capture and points the
+# blame at Screen Recording rather than at the argument.
+if [[ "$NAME" == */* ]]; then
+  echo "error: the argument is a name, not a path (got '$NAME')." >&2
+  echo "       Images are always written to Docs/screenshots/<name>.png." >&2
+  exit 2
+fi
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUTPUT_DIR="$ROOT/Docs/screenshots"
 OUTPUT="$OUTPUT_DIR/$NAME.png"
