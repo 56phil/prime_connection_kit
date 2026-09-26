@@ -75,11 +75,11 @@ not bypass this on current macOS versions.
 With a Developer ID certificate installed, `Scripts/notarize.sh` will notarize and
 staple the image, after which it opens with no warning at all.
 
-The script refuses to replace a running copy, then checks the signature of what it
-actually installed. There is no driver to install and no kernel extension: the app
-reaches the calculator through IOKit HID, which macOS already provides, so the only
-setup is the Input Monitoring permission below. HP's Connectivity Kit can stay
-installed alongside it.
+The install script refuses to replace a running copy, and checks the signature of
+what it actually installed rather than of what it built. There is no driver to
+install and no kernel extension: the app reaches the calculator through IOKit HID,
+which macOS already provides, so the only setup is the Input Monitoring permission
+below. HP's Connectivity Kit can stay installed alongside it.
 
 ### Releasing
 
