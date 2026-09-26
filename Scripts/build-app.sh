@@ -10,6 +10,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/Scripts/version.sh"
 OUTPUT_DIR="${1:-$ROOT/build}"
 APP="$OUTPUT_DIR/PrimeConnectionKit.app"
 
@@ -53,9 +54,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>@@VERSION@@</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>@@BUILD_NUMBER@@</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleIconFile</key>
@@ -97,6 +98,13 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
+
+# Fill in the version, which comes from Scripts/version.sh.
+sed -i '' "s/@@VERSION@@/$VERSION/; s/@@BUILD_NUMBER@@/$BUILD_NUMBER/" "$APP/Contents/Info.plist"
+if grep -q "@@" "$APP/Contents/Info.plist"; then
+  echo "error: a version placeholder was left unfilled" >&2
+  exit 1
+fi
 
 echo "Signing…"
 # Prefer a real signing identity over ad-hoc. macOS keys the Input Monitoring

@@ -1,0 +1,108 @@
+name: Build and release
+
+# Every push and pull request is built and tested. Pushing a tag like `v1.0.0`
+# additionally builds the disk image and publishes it as a release, which is what
+# makes the app downloadable without anyone having to compile it.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Build and test
+    # macOS 15 carries the Xcode 16 toolchain that Swift 6 requires.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show the toolchain
+        run: swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        # The suite reads HP's working folder when it is present and skips those
+        # cases when it is not, so it runs unchanged on a clean machine.
+        run: swift test
+
+  release:
+    name: Package and publish
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    permissions:
+      # Needed to create the release and upload the disk image to it.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version matches the tag
+        # A tag that disagrees with Scripts/version.sh would publish an image whose
+        # filename and bundle version do not match the release it is attached to.
+        run: |
+          source Scripts/version.sh
+          TAG="${GITHUB_REF_NAME#v}"
+          if [[ "$TAG" != "$VERSION" ]]; then
+            echo "::error::tag v$TAG does not match VERSION=$VERSION in Scripts/version.sh"
+            exit 1
+          fi
+          echo "version $VERSION matches tag v$TAG"
+
+      - name: Import the signing certificate
+        if: ${{ secrets.MACOS_CERTIFICATE_BASE64 != '' }}
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          # A temporary keychain, so the certificate is not left in the default one.
+          echo "$CERTIFICATE_BASE64" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p "" build.keychain
+          security set-keychain-settings -lut 900 build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import /tmp/cert.p12 -k build.keychain \
+            -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain >/dev/null
+          security default-keychain -s build.keychain
+          rm -f /tmp/cert.p12
+
+      - name: Build the disk image
+        env:
+          # Becomes CFBundleVersion, which has to increase for every build of the
+          # same marketing version.
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          if [[ -z "${{ secrets.MACOS_CERTIFICATE_BASE64 }}" ]]; then
+            echo "No signing certificate configured; the app will be signed ad-hoc"
+            echo "and macOS will quarantine a downloaded copy."
+          fi
+          ./Scripts/make-dmg.sh build
+
+      - name: Upload the disk image as a workflow artifact
+        # Available even when the release step is skipped, or when it needs re-running.
+        uses: actions/upload-artifact@v4
+        with:
+          name: PrimeConnectionKit-dmg
+          path: |
+            build/*.dmg
+            build/*.sha256
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source Scripts/version.sh
+          DMG="build/PrimeConnectionKit-$VERSION.dmg"
+
+          # The notes live in the repository so they can be reviewed in a pull
+          # request, with the version substituted in.
+          sed "s/@@VERSION@@/$VERSION/g" .github/release-notes.md > /tmp/notes.md
+          grep -q "@@" /tmp/notes.md && { echo "::error::unsubstituted placeholder in the release notes"; exit 1; }
+
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Prime Connection Kit $VERSION" \
+            --notes-file /tmp/notes.md \
+            "$DMG" "$DMG.sha256"

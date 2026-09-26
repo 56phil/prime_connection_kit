@@ -19,7 +19,10 @@ Sources/PrimeConnectionKit/ the AppKit application
 Tests/HPLinkTests/         protocol and format tests, including real HP files
 Scripts/build-app.sh       builds PrimeConnectionKit.app
 Scripts/install-app.sh     builds and installs it into /Applications
+Scripts/make-dmg.sh        packages it as a downloadable disk image
+Scripts/notarize.sh        notarizes a disk image (needs a Developer ID)
 Scripts/make-icon.swift    draws the app icon
+Scripts/version.sh         the version, in one place
 ```
 
 ## Building
@@ -37,15 +40,60 @@ uses `ditto`, and the icon is drawn with Core Graphics — all part of the syste
 
 ## Installing
 
+Two ways. To install the copy you built yourself:
+
 ```
 ./Scripts/install-app.sh    # builds, installs to /Applications, verifies it
 ```
+
+Or, to download a prebuilt copy — see **Releases** on the repository page. The
+release workflow builds a disk image on every tag, so the latest release always
+matches the latest tagged source:
+
+```
+./Scripts/make-dmg.sh       # produces build/PrimeConnectionKit-1.0.0.dmg
+```
+
+### Opening a downloaded copy
+
+The disk image is signed, but **not notarized**, because notarization requires a
+paid Developer ID certificate rather than the development certificate available
+here. macOS quarantines anything downloaded from the internet and refuses it: the
+assessment returns `rejected` and the process is killed on launch. Verified on this
+machine, not assumed.
+
+To open it, clear the quarantine attribute after dragging the app to Applications:
+
+```sh
+xattr -d "com.apple.quarantine" "/Applications/PrimeConnectionKit.app"
+```
+
+Or launch it once, let it be refused, then allow it under **System Settings →
+Privacy & Security → Open Anyway**. Right-clicking the app and choosing *Open* does
+not bypass this on current macOS versions.
+
+With a Developer ID certificate installed, `Scripts/notarize.sh` will notarize and
+staple the image, after which it opens with no warning at all.
 
 The script refuses to replace a running copy, then checks the signature of what it
 actually installed. There is no driver to install and no kernel extension: the app
 reaches the calculator through IOKit HID, which macOS already provides, so the only
 setup is the Input Monitoring permission below. HP's Connectivity Kit can stay
 installed alongside it.
+
+### Releasing
+
+Pushing a tag builds the disk image and publishes it as a release, provided the tag
+matches `Scripts/version.sh`:
+
+```
+./Scripts/make-dmg.sh                    # check it builds
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+To have CI sign the build, add two repository secrets: `MACOS_CERTIFICATE_BASE64`
+(a base64 `.p12`) and `MACOS_CERTIFICATE_PASSWORD`. Without them the workflow still
+publishes, but signed ad-hoc, and the release notes say so.
 
 **The first launch asks for Input Monitoring permission.** macOS requires it before
 any application may open a USB HID device. Grant it under System Settings →
