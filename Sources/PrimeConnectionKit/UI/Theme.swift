@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import HPLink
 
 /// Shared visual constants, so the app reads consistently and matches the
@@ -64,6 +65,17 @@ extension NSView {
             child.topAnchor.constraint(equalTo: topAnchor, constant: insets.top),
             child.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -insets.bottom),
         ])
+    }
+}
+
+extension UTType {
+    /// The content type for a calculator file extension the app declares.
+    ///
+    /// The extension is registered as a document type in the bundle's Info.plist,
+    /// so the system knows it; looking it up here keeps the extension in one place
+    /// rather than repeating the string at each panel.
+    static func primeContentType(forExtension fileExtension: String) -> UTType? {
+        UTType(filenameExtension: fileExtension)
     }
 }
 

@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import HPLink
 
 /// Starting points for new programs.
@@ -36,6 +37,11 @@ enum ScreenshotExport {
     static let nativeFormat = "png"
     /// Formats offered when saving, matching the Connectivity Kit.
     static let offeredFormats = ["png", "bmp", "jpg"]
+
+    /// The same formats as content types, which is what `NSSavePanel` takes.
+    static var offeredContentTypes: [UTType] {
+        offeredFormats.compactMap { UTType(filenameExtension: $0) }
+    }
 
     /// Shows the capture in a window with Save and Copy actions.
     static func show(bytes: [UInt8], suggestedName: String, in parent: NSWindow?) {
@@ -111,7 +117,7 @@ enum ScreenshotExport {
         @objc func saveCapture(_ sender: Any?) {
             let panel = NSSavePanel()
             panel.nameFieldStringValue = "\(suggestedName) Screen.png"
-            panel.allowedFileTypes = ScreenshotExport.offeredFormats
+            panel.allowedContentTypes = ScreenshotExport.offeredContentTypes
             guard panel.runModal() == .OK, let url = panel.url else { return }
 
             do {

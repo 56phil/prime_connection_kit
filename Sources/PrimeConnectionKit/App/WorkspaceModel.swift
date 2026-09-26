@@ -95,7 +95,9 @@ public final class WorkspaceModel {
     /// Adopts a different working folder, as the Preferences dialog allows.
     public func setWorkingFolder(_ url: URL) {
         workingFolder = PrimeWorkingFolder(root: url)
-        try? workingFolder.createLayoutIfNeeded()
+        // The layout is created for its effect on disk; a failure leaves the
+        // folder as it was, which the reload below reports through the pane.
+        _ = try? workingFolder.createLayoutIfNeeded()
         reloadContent()
         refreshKnownCalculators()
         startWatchingWorkingFolder()
@@ -105,7 +107,7 @@ public final class WorkspaceModel {
     /// Ensures the folder structure exists, starts watching it for outside
     /// changes, and loads what is already there.
     public func start() {
-        try? workingFolder.createLayoutIfNeeded()
+        _ = try? workingFolder.createLayoutIfNeeded()
         reloadContent()
         refreshKnownCalculators()
         startWatchingWorkingFolder()

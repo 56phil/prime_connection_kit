@@ -57,7 +57,7 @@ struct PrimeProbe {
         probeReadiness(session)
         probeInformation(session)
         probeScreen(session)
-        probeBackup(session)
+        _ = probeBackup(session)
         if !skipWrite { await probeWrite(session, connection: connection) }
 
         print("\nDone.")

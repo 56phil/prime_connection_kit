@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import HPLink
 
 /// The application's main window: calculator pane, content pane, and a tabbed
@@ -852,7 +853,7 @@ final class MainWindowController: NSWindowController {
         guard let entry = targetCalculator else { return }
         let panel = NSOpenPanel()
         panel.directoryURL = model.workingFolder.backupsURL
-        panel.allowedFileTypes = ["zip"]
+        panel.allowedContentTypes = [.zip]
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         Task { @MainActor in await model.restore(entry, from: url) }

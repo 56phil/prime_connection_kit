@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import HPLink
 
 /// The Monitor window: one thumbnail per attached calculator, refreshed on a
@@ -584,8 +585,9 @@ final class ProctorViewController: NSViewController {
 
     @objc private func chooseConfiguration() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = []
-        panel.allowedFileTypes = ["hpexammode"]
+        // The extension is declared by the bundle's own document types, so the
+        // content type is resolved from it rather than hardcoded here.
+        panel.allowedContentTypes = [.primeContentType(forExtension: "hpexammode")].compactMap { $0 }
         panel.directoryURL = model.workingFolder.contentURL
         guard panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url) else { return }
 
