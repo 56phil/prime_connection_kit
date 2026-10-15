@@ -1,8 +1,17 @@
 # Launch checklist
 
 Where this stands: the application is complete and hardware-verified, the
-screenshots are captured, and `v1.0.1` is published. What is left is one optional
-item and the announcing itself.
+screenshots are captured, and `v1.0.1` is published. `v1.0.2` is committed and not yet
+released; the only change in it is a fix for Set Clock from Computer, which did
+nothing. What is left is one optional item and the announcing itself.
+
+## Releasing
+
+`Scripts/version.sh` holds the version — `build-app.sh`, `make-dmg.sh` and the release
+workflow all read it, and the workflow checks it against the tag. The text that gets
+published is assembled from `.github/release-notes.md`, so its "What changed in
+`@@VERSION@@`" section is the one part of that file to rewrite, or delete, for each
+release. Everything else in it is static.
 
 ## The one open item: a Developer ID
 

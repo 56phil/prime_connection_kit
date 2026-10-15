@@ -12,4 +12,11 @@ Verify the download before opening it:
 shasum -a 256 -c PrimeConnectionKit-@@VERSION@@.dmg.sha256
 ```
 
+## What changed in @@VERSION@@
+
+- **Set Clock from Computer** did nothing. The command was sent without the date and
+  time body the calculator needs, and one sent without it is accepted and leaves the
+  clock exactly as it was. The menu item also reported success whatever happened,
+  which is how it went unnoticed.
+
 @@GATEKEEPER_SECTION@@

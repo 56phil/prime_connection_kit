@@ -25,7 +25,7 @@ of these contradict what's published, and all four are reproducible:
 | Write acknowledgement | a reply is sent | **nothing is sent** |
 | Program transfer payload | the `.hpprgm` container | **the raw UTF-16 text** |
 
-Two notes on why these matter:
+Two notes on why the table matters:
 
 **The missing acknowledgement** is the nastiest of them if you're implementing
 against the published description. Waiting for a reply that never comes turns a
@@ -47,6 +47,12 @@ only the leading UTF-16 units. The evidence is exact: a container starting
 `7C 61 8A B2 FE FF FF FF 00 00` was stored as 10 — in both cases, precisely the
 units before the first zero byte. Sending the source text instead round-trips a
 1378-character program intact across three reports.
+
+**One more, and it is not in the table because nothing is published about it.** The
+clock command's body is undocumented, and one sent without it is accepted and changes
+nothing — the same silent failure as the missing acknowledgement, one layer up. What
+HP's own Connectivity Kit puts on the wire is `00 00 54 1E`, then year-of-century,
+month, day, hour, minute and second.
 
 I'd be glad to write these up in more detail, or to send them upstream to `hplp` as
 a patch to that TODO item if that's useful.
