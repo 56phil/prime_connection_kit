@@ -181,6 +181,25 @@ struct PrimeSessionTests {
         #expect(body == [0x00, 0x00, 0x54, 0x1E, 26, 9, 26, 14, 30, 5])
     }
 
+    @Test("setting the clock puts that body on the wire")
+    func setDateTimeOnTheWire() throws {
+        let (session, transport) = Self.makeSession(exchanges: [])
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let date = calendar.date(from: DateComponents(
+            year: 2026, month: 9, day: 26, hour: 14, minute: 30, second: 5
+        ))!
+
+        try session.setDateTime(date, calendar: calendar, timeout: 0.01)
+
+        // One report: report ID, sequence number, then the whole message. A bare
+        // command byte with no body is what a calculator ignores.
+        #expect(transport.writtenReports.first == [
+            0x00, 0x00, 0xE7, 0x01, 0x00, 0x00, 0x00, 0x0A,
+            0x00, 0x00, 0x54, 0x1E, 26, 9, 26, 14, 30, 5,
+        ])
+    }
+
     @Test("a chat message is UTF-16 little-endian")
     func chatCommand() {
         let message = PrimeCommandBuilder.sendChat("Hi")

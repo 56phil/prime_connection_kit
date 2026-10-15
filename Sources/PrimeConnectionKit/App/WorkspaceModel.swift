@@ -513,10 +513,18 @@ public final class WorkspaceModel {
     /// Sets every attached calculator's clock to the computer's.
     public func syncClocks() async {
         let targets = calculators.filter(\.isAttached)
-        for entry in targets {
-            try? entry.session?.setDateTime(Date())
+        guard !targets.isEmpty else {
+            status("No calculators are connected.")
+            return
         }
-        status("Clock sent to \(targets.count) calculator(s)")
+        var failures: [String] = []
+        for entry in targets {
+            do { try entry.session?.setDateTime(Date()) }
+            catch { failures.append("\(entry.name): \(Self.describe(error))") }
+        }
+        status(failures.isEmpty
+            ? "Clock sent to \(targets.count) calculator(s)"
+            : "Could not set the clock — " + failures.joined(separator: "; "))
         notify()
     }
 

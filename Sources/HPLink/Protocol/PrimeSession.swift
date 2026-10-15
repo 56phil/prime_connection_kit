@@ -71,10 +71,20 @@ public final class PrimeSession: @unchecked Sendable {
     }
 
     /// Sets the calculator's clock.
-    public func setDateTime(_ date: Date, timeout: TimeInterval = defaultReplyTimeout) throws {
+    public func setDateTime(
+        _ date: Date,
+        calendar: Calendar = .current,
+        timeout: TimeInterval = defaultReplyTimeout
+    ) throws {
         // The calculator acknowledges writes with a ready-check, so a failed
         // probe afterwards is the only observable signal of a rejected value.
-        _ = try perform(.setDateTime, timeout: timeout, expectingReply: false)
+        // The message must carry the date and time body; a bare `0xE7` is
+        // ignored by the calculator and leaves the clock as it was.
+        _ = try perform(
+            PrimeCommandBuilder.setDateTime(date, calendar: calendar),
+            timeout: timeout,
+            expectingReply: false
+        )
         if transport.hasPendingReport { transport.flushPendingReports() }
         _ = try? checkReady(timeout: timeout)
     }

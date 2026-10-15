@@ -911,8 +911,18 @@ final class MainWindowController: NSWindowController {
     @objc private func syncClock() {
         guard let entry = targetCalculator else { return }
         Task { @MainActor in
-            try? entry.session?.setDateTime(Date())
-            model.status("Clock sent to \(entry.name)")
+            guard let session = entry.session else {
+                model.status("\(entry.name) is not connected.")
+                modelChanged()
+                return
+            }
+            do {
+                try session.setDateTime(Date())
+                model.status("Clock sent to \(entry.name)")
+            } catch {
+                model.status(
+                    "Could not set the clock on \(entry.name) — \(WorkspaceModel.describe(error))")
+            }
             modelChanged()
         }
     }
